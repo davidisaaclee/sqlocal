@@ -36,8 +36,6 @@ export class SQLocalProcessor {
 
 	protected proxy: WorkerProxy;
 
-        private readyToReceiveMessages = false;
-
 	onmessage:
 		| ((message: OutputMessage, transfer: Transferable[]) => void)
 		| undefined;
@@ -89,7 +87,6 @@ export class SQLocalProcessor {
 		}
 
 		this.userFunctions.forEach(this.initUserFunction);
-		this.readyToReceiveMessages = true;
 		await this.initMutex.unlock();
 	};
 
@@ -100,11 +97,8 @@ export class SQLocalProcessor {
 			message = message.data;
 		}
 
-                const shouldUseLock = !this.readyToReceiveMessages;
-
-                if (shouldUseLock) {
-			await this.initMutex.lock();
-                }
+                await this.initMutex.lock();
+                await this.initMutex.unlock();
 
 		switch (message.type) {
 			case 'config':
@@ -128,10 +122,6 @@ export class SQLocalProcessor {
 				this.destroy(message);
 				break;
 		}
-
-                if (shouldUseLock) {
-			await this.initMutex.unlock();
-                }
 	};
 
 	protected emitMessage = (
